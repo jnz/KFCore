@@ -120,6 +120,17 @@ Clone the repository:
 2. **Using the Functions**
    - Utilize the provided functions for your state estimation tasks.
 
+## Benchmarks
+
+| Average Run Time Test (based on commit `2b35963`)                                       | `UDU` C    | `Takasu` C  | `Takasu` C++  |
+|-----------------------------------------------------------------------------------------|------------|-------------|---------------|
+| Intel i5-13600KF Desktop CPU - Kalman Update Routine                                    | 2.95 µS    | 1.97 µS     | 12.06 µS      |
+| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Update Routine      | 103 µS     | 135 µS      | N/A           |
+| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Prediction Routine  | 593 µS     | 393 µS      | N/A           |
+
+*all benchmarks with -O2 optimization*
+*15 elements state vector in benchmarks, 15x15 covariance matrix, 3x1 measurement vectors*
+*C++ implementation not tested on the embedded platform*
 
 ## Usage examples
 
@@ -264,7 +275,7 @@ covariance matrix of measurement uncertainty $\mathbf{R}$ of $\mathbf{z}$.
 This project is licensed under the modified BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
 
 
-### References
+## References
 
 1. Chang, G. (2014). *Robust Kalman filtering based on Mahalanobis distance as outlier judging criterion*. **Journal of Geodesy**, **88**(4), 391-401.
 2. Carpenter, J. Russell, and Christopher N. D’souza (2018). [*Navigation Filter Best Practices*](https://ntrs.nasa.gov/api/citations/20180003657/downloads/20180003657.pdf). No. NF1676L-29886.
