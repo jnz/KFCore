@@ -1,5 +1,7 @@
 # KFCore
 
+![LOGO](kfcore.png)
+
 **KFCore** is a lightweight and efficient Kalman Filter library implemented in
 C, C++, and MATLAB. Designed for both embedded systems and research
 applications, KFCore offers numerically stable algorithms with minimal
