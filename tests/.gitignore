@@ -1,0 +1,5 @@
+kfcoretest
+*.s
+gmon.out
+analysis.txt
+
