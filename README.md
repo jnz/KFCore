@@ -14,21 +14,13 @@ in various projects.
   - Implements the **UDU** (Bierman/Thornton) algorithms for superior numerical stability compared to the standard Kalman Filter formulations [(2)](https://ntrs.nasa.gov/api/citations/20180003657/downloads/20180003657.pdf).
   - Includes the **Takasu formulation**, a fast and efficient implementation offering speed improvements with enhanced stability.
 
-- **Optimized Computations with LAPACK/BLAS**
-  - Utilizes a **BLAS interface** to take advantage of optimized BLAS libraries on the target platform.
-  - By default provides a small built-in **miniblas** library for platforms without an available BLAS library.
-
-- **Efficient Memory Usage**
+- **Focus on Embedded Targets**
   - Uses only **static memory allocation**, ensuring guaranteed runtime and memory usage suitable for resource-constrained environments.
   - No dynamic memory allocation, making it ideal for embedded systems.
 
 - **No External Dependencies**
   - Written in plain **C code** with no external code dependencies.
   - Easy integration into any project without the need for additional libraries.
-
-- **C++ Support with Eigen**
-  - Offers a C++ version based on the **Eigen** math library.
-  - Features template functions for convenience in projects already using Eigen.
 
 - **Mathematical Optimizations**
   - Leverages the symmetry and positive semi-definiteness of covariance matrices.
@@ -40,13 +32,16 @@ in various projects.
   - Option to reduce the influence of potential outliers based on the Mahalanobis
     distance (Chang, 2014).
 
-- **Multi-Language Support**
-  - Available in **C** and **MATLAB**, with plans to add **Python** versions in the future.
-  - MATLAB version aimed at research and validation of algorithm suitability.
+- **Optional: Optimized Computations with BLAS Interface**
+  - Utilizes a **BLAS interface** to take advantage of optimized BLAS libraries on the target platform.
+  - By default provides a small built-in **miniblas** library for platforms without an available BLAS library.
+
+- **Optional: C++ Support with Eigen**
+  - Offers a C++ version based on the **Eigen** math library.
+  - Features template functions for convenience in projects already using Eigen.
 
 
 ## Implementations
-
 
 | Feature                               | `UDU`      | `Takasu`       |
 |---------------------------------------|:----------:|--------------:|
@@ -80,34 +75,30 @@ stability in scenarios involving:
 
 #### Cloning the Repository
 
-```bash
-git clone https://github.com/jnz/KFCore.git
-```
+Clone the repository:
+
+    git clone https://github.com/jnz/KFCore.git
 
 ### C Version
 
-- Copy `linalg.c` and `linalg.h` from the `src/c` directory to your project.
-- Copy `miniblas.c` and `miniblas.h` from the `src/c` directory to your project.
+- Copy `linalg.c` and `linalg.h` from the `c/` directory to your project.
+- Copy `miniblas.c` and `miniblas.h` from the `c/` directory to your project.
 - If your platform has an optimized BLAS library that you want to use, you
   can exclude miniblas.
 
 **How to add the KFCore Takasu formulation to your project**
-   - Add the files `kalman_takasu.c` and `kalman_takasu.h` from the `src/c`
+   - Add the files `kalman_takasu.c` and `kalman_takasu.h` from the `c/`
      directory to your project.
    - Include the header file in your code:
 
-     ```c
-     #include "kalman_takasu.h"
-     ```
+    #include "kalman_takasu.h"
 
 **How to add the KFCore UDU formulation to your project**
-   - Add the files `kalman_udu.c` and `kalman_udu.h` from the `src/c`
+   - Add the files `kalman_udu.c` and `kalman_udu.h` from the `c/`
      directory to your project.
    - Include the header file in your code:
 
-     ```c
-     #include "kalman_udu.h"
-     ```
+    #include "kalman_udu.h"
 
 ### Eigen C++ Version
 
@@ -115,11 +106,7 @@ git clone https://github.com/jnz/KFCore.git
   The file `kalman_takasu_eigen.cpp` is only required if you want to use
   the non-templated function version.
 
-
-     ```c
-     #include "kalman_takasu_eigen.h"    // For C++ projects
-     ```
-
+    #include "kalman_takasu_eigen.h"    // For C++ projects
 
 ### MATLAB Version
 
@@ -127,7 +114,7 @@ git clone https://github.com/jnz/KFCore.git
    - Add the `matlab` directory to your project or just copy the `.m` files:
 
      ```matlab
-     addpath('kfcore/src/matlab');
+     addpath('kfcore/matlab');
      ```
 
 2. **Using the Functions**
