@@ -73,8 +73,8 @@ stability in scenarios involving:
 | Average Run Time Test                                                                   | `UDU` C   | `Takasu` C  | `Takasu` C++  |
 |-----------------------------------------------------------------------------------------|-----------|-------------|---------------|
 | Intel i5-13600KF Desktop CPU - Kalman Update Routine                                    | 2.95 µS   | 1.97 µS     | 12.06 µS      |
-| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Update Routine      | 103 µS    | 135 µS      | N/A           |
-| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Prediction Routine  | 593 µS    | 393 µS      | N/A           |
+| STM32F429 180 MHz Embedded CPU (ARM Cortex M4) - Kalman Update Routine                  | 103 µS    | 135 µS      | *N/A*         |
+| STM32F429 180 MHz Embedded CPU (ARM Cortex M4) - Kalman Prediction Routine              | 593 µS    | 393 µS      | *N/A*         |
 
 (based on commit `2b35963`)
 
