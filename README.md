@@ -68,6 +68,20 @@ stability in scenarios involving:
  - Very high precision measurements
  - Poorly conditioned measurement sensitivity matrices $\mathbf{H}$
 
+## Benchmarks
+
+| Average Run Time Test                                                                   | `UDU` C   | `Takasu` C  | `Takasu` C++  |
+|-----------------------------------------------------------------------------------------|-----------|-------------|---------------|
+| Intel i5-13600KF Desktop CPU - Kalman Update Routine                                    | 2.95µS    | 1.97µS      | 12.06µS       |
+| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Update Routine      | 103µS     | 135µS       | N/A           |
+| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Prediction Routine  | 593µS     | 393µS       | N/A           |
+
+(based on commit `2b35963`)
+
+*All benchmarks with -O2 optimization*.
+*15 elements state vector in benchmarks, 15x15 covariance matrix, 3x1 measurement vectors*.
+*C++ implementation not tested on the embedded platform*.
+
 
 ## Getting Started
 
@@ -119,18 +133,6 @@ Clone the repository:
 
 2. **Using the Functions**
    - Utilize the provided functions for your state estimation tasks.
-
-## Benchmarks
-
-| Average Run Time Test (based on commit `2b35963`)                                       | `UDU` C    | `Takasu` C  | `Takasu` C++  |
-|-----------------------------------------------------------------------------------------|------------|-------------|---------------|
-| Intel i5-13600KF Desktop CPU - Kalman Update Routine                                    | 2.95 µS    | 1.97 µS     | 12.06 µS      |
-| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Update Routine      | 103 µS     | 135 µS      | N/A           |
-| STM32F429 180 MHz Embedded Microcontroller (ARM Cortex M4) - Kalman Prediction Routine  | 593 µS     | 393 µS      | N/A           |
-
-*all benchmarks with -O2 optimization*
-*15 elements state vector in benchmarks, 15x15 covariance matrix, 3x1 measurement vectors*
-*C++ implementation not tested on the embedded platform*
 
 ## Usage examples
 
