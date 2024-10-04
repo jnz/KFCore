@@ -3,8 +3,8 @@ function [] = testnumerical()
 
 rng(42);
 
-epsilon = 1e-6;
-epsilon_R = 1e-6;
+epsilon = 1e-7;
+epsilon_R = 1e-8;
 
 H = [ 1 1 1; 1 1 1+epsilon];
 fprintf('cond(H) = %.5e, rank(H) = %f\n', cond(H), rank(H));
@@ -12,8 +12,8 @@ fprintf('cond(H) = %.5e, rank(H) = %f\n', cond(H), rank(H));
 P = eye(3);
 x = [1e3; 2e3; 3e3 ];
 
-A = [1 0.5; 0 1];
-sigma = epsilon_R^2;
+A = eye(2);
+sigma = epsilon_R;
 R = A*(eye(2)*sigma^2)*A';
 
 S = H*P*H' + R;
