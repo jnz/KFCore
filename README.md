@@ -9,12 +9,31 @@ dependencies and low memory usage. By leveraging advanced formulations and
 optimized computations, KFCore provides a robust solution for state estimation
 in various projects.
 
+## Quick check
+
+Does your Kalman filter implementation handle numerical problems with a measurement sensitivity matrix $\mathbf{H}$ and a covariance matrix $\mathbf{R}$ such as this?
+
+$$
+H = \begin{bmatrix}
+1 & 1 & 1 \\
+1 & 1 & 1+ \epsilon
+\end{bmatrix}
+$$
+
+$$
+R = \begin{bmatrix}
+\epsilon^2 & 0 \\
+0 &  \epsilon^2
+\end{bmatrix}
+$$
+
+The `UDU` filter in this library is able to do this.
 
 ## Features
 
 - **High Numerical Stability**
   - Implements the **UDU** (Bierman/Thornton) algorithms for superior numerical stability compared to the standard Kalman Filter formulations [(2)](https://ntrs.nasa.gov/api/citations/20180003657/downloads/20180003657.pdf).
-  - Includes the **Takasu formulation**, a fast and efficient implementation offering speed improvements with enhanced stability.
+  - Includes the **Takasu formulation**, a fast and efficient implementation if you don't want a square root formulation such as the `UDU` filter.
 
 - **Focus on Embedded Targets**
   - Uses only **static memory allocation**, ensuring guaranteed runtime and memory usage suitable for resource-constrained environments.
@@ -107,14 +126,18 @@ Clone the repository:
      directory to your project.
    - Include the header file in your code:
 
+```c
     #include "kalman_takasu.h"
+```
 
 **How to add the KFCore UDU formulation to your project**
    - Add the files `kalman_udu.c` and `kalman_udu.h` from the `c/`
      directory to your project.
    - Include the header file in your code:
 
+```c
     #include "kalman_udu.h"
+```
 
 ### Eigen C++ Version
 
@@ -122,7 +145,9 @@ Clone the repository:
   The file `kalman_takasu_eigen.cpp` is only required if you want to use
   the non-templated function version.
 
+```c
     #include "kalman_takasu_eigen.h"    // For C++ projects
+```
 
 ### MATLAB Version
 
@@ -147,42 +172,42 @@ Two important things to highlight:
 - The matrix $\mathbf{H}$ is supplied in a transposed way (this makes the implementation more efficient)
 
 
-     ```c
-        float x[4]    = { 1, 1, 1, 1 }; // State vector
-        float P[4*4]  = { 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f }; // Covariance matrix of state vector
+```c
+        float x[4]    = { 1, 1, 1, 1 }; // 4x1 State vector
+        float P[4*4]  = { 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f }; // 4x4 Covariance matrix of state vector
         float R[3*3]  = { 0.25f, 0, 0, 0, 0.25f, 0, 0, 0, 0.25f }; // Covariance matrix of measurement
-        float dz[3]   = { 0.2688f, 0.9169f, -1.1294f }; // Measurement residuals
+        float dz[3]   = { 0.2688f, 0.9169f, -1.1294f }; // 3x1 Measurement residuals
         float Ht[4*3] = { 8, 1, 6, 1, 3, 5, 7, 2, 4, 9, 2, 3 }; // Transposed design matrix / measurement sensitivity matrix, such that
         int result    = kalman_takasu(x, P, dz, R, Ht, 4, 3, 0.0f, NULL); // Call to update routine
 
-     ```
+```
 
 ### Quick Start UDU Filter in C
 
-First a state vector `x` and an initial covariance matrix `P` of the
+First a 4x1 state vector `x` and an initial 4x4 covariance matrix `P` of the
 state vector is needed, as an example:
 
 
-     ```c
+```c
         float x[4]     = { 1.0f, 0.0f, 0.0f, 0.0f };
         float P[4 * 4] = { 0.5f, 0, 0, 0, 0, 0.5f, 0, 0, 0, 0, 0.5f, 0, 0, 0, 0, 0.5f };
-     ```
+```
 
 As the UDU filter can be called a square root filter, the matrix `P` needs to
 be decomposed first:
 
 
-     ```c
-        float U[4 * 4];
-        float d[4];
-     ```
+ ```c
+        float U[4 * 4]; // Upper triangular matrix
+        float d[4]; // 4x1 diagonal vector
+```
 
 The `udu` function will perform the decomposition of `P` into `U` and `d`:
 
 
-     ```c
+```c
         udu(P, U, d, 4);
-     ```
+```
 
 `d` is a vector that describes the diagonal matrix of the UDU decomposition.
 After this, the `P` matrix is no longer required.
@@ -192,50 +217,50 @@ describes the uncertainty of the measurements. Note that `R` is not purely a
 diagonal matrix so it describes correlations between the measurements in `z`
 
 
-     ```c
+```c
         const float z[3]      = { 16.2688f, 17.9169f, 16.8706f };
         const float R[3 * 3]  = { 0.25f, 0.25f, 0.0f, 0.25f, 0.5f, 0.1f, 0.0f, 0.1f, 0.5f };
-     ```
+```
 
 Then we need a measurement sensitivity matrix `H` but we store it in a
 transposed form, that's why it is named `Ht` for transposed. Note that the
 column-major form is used in this library.
 
 
-     ```c
+```c
         const float Ht[4 * 3] = { 8, 1, 6, 1, 3, 5, 7, 2, 4, 9, 2, 3 };
-     ```
+```
 
 The UDU filter can only process one scalar measurement at a time, that's why
 we first need to decorrelate the measurements:
 
 
-    ```c
+```c
         decorrelate(z, Ht, R, 4, 3);
-    ```
+```
 
 After the decorrelation, the measurements have a unit variance:
 
 
-    ```c
+```c
         float eye[3 * 3]  = { 1, 0, 0,
                               0, 1, 0,
                               0, 0, 1 };
-    ```
+```
 
 Now we can finally process the measurements in the Kalman filter update step:
 
 
-    ```c
+```c
         kalman_udu(x, U, d, z, eye, Ht, 4, 3, 0.0f, 0);
-    ```
+```
 
 ### Quick Start Takasu Filter in C++
 
 For C++ a template function is used in this example. Note that float can be replaced by double.
 
 
-     ```c
+```c
         const int StateDim = 15;
         const int MeasDim  = 3;
 
@@ -249,7 +274,7 @@ For C++ a template function is used in this example. Note that float can be repl
         dz.noalias() = z - H * x; // Calculate residuals
         kalman_takasu_eigen<float, StateDim, MeasDim>(x, P, dz, R, H);
 
-     ```
+```
 
 For dynamic matrices there is also the function `kalman_takasu_dynamic` but the template function potentially helps the compiler to generate more efficient code.
 
