@@ -74,7 +74,7 @@ int kalman_udu_scalar(float* x, float* U, float* d, const float dz, const float 
         alpha += a[j] * b[j];
         float lambda = -a[j] * gamma;
 
-        gamma = 1.0f / alpha; // FIXME test if this is possible and return -1 if not
+        gamma = 1.0f / alpha; // FIXME add test to check for UDU filter health
 
         d[j] *= beta * gamma;
         for (int i = 0; i < j; i++)
