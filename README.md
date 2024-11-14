@@ -11,7 +11,10 @@ in various projects.
 
 ## Quick check
 
-Does your Kalman filter implementation handle numerical problems with a measurement sensitivity matrix $\mathbf{H}$ and a covariance matrix $\mathbf{R}$ such as this?
+Are you calculating the inverse of a matrix in your Kalman filter code?
+Or does your Kalman filter implementation handle numerical problems with a measurement sensitivity matrix $\mathbf{H}$ and a covariance matrix $\mathbf{R}$ such as this?
+For small values of $\epsilon$ a naive implementation of the well-known Kalman filter equations will run into
+numerical issues significantly earlier than the `UDU` filter in this library.
 
 $$
 H = \begin{bmatrix}
@@ -27,7 +30,7 @@ R = \begin{bmatrix}
 \end{bmatrix}
 $$
 
-The `UDU` filter in this library is able to do this.
+You could use the `Joseph Form` to mitigate the numerical issues of the standard/vanilla Kalman equations, but this formulation requires more matrix operations and is thus not as fast and potentially still numerically inferior.
 
 ## Features
 
@@ -68,11 +71,12 @@ The `UDU` filter in this library is able to do this.
 |---------------------------------------|:----------:|--------------:|
 | Numerical Stability                   | Excellent  | Good          |
 | Speed                                 | Fast       | Very fast     |
-| C implementation available            |   ✅        |       ✅       |
-| MATLAB implementation available       |   ✅        |       ✅       |
-| C++ implementation available          |   ❌        |       ✅       |
 | Outlier detection                     |   ✅        |       ✅       |
+| MATLAB implementation available       |   ✅        |       ✅       |
+| C implementation available            |   ✅        |       ✅       |
+| C++ implementation available          |   ❌        |       ✅       |
 | No measurement preprocessing req.     |   ❌        |       ✅       |
+| Covariance matrix directly available  |   ❌        |       ✅       |
 
 The `UDU` formulation offers superior numerical stability but requires an UDU
 decomposition of the covariance matrix (hence the name) and additionally a
