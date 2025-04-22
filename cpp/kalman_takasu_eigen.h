@@ -108,8 +108,8 @@ int kalman_takasu_eigen(
  *  @param[in] Phi     state transition matrix (n x n)
  *  @param[in] G       process noise distribution matrix (modified, if necessary to
  *                     make the associated process noise covariance diagonal) (n x r)
- *  @param[in] Q       diagonal vector of covariance matrix of process noise
- *                     in the stochastic system model (r x 1) (diag(Q) has size r x r)
+ *  @param[in] Q       covariance matrix of process noise
+ *                     in the stochastic system model (r x r)
  *  @param[in] n       State vector size n.
  *  @param[in] r       Process noise matrix size.
  **/
