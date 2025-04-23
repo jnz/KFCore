@@ -171,6 +171,7 @@ Clone the repository:
 ### Quick Start Takasu Filter in C
 
 For a 4x1 state vector and a 3x1 measurement vector an example setup is shown below.
+The measurement sensitivity matrix $\mathbf{H}$ is a 3x4 matrix.
 Two important things to highlight:
 
 - The column-major format is used (LAPACK/BLAS default)
@@ -180,9 +181,9 @@ Two important things to highlight:
 ```c
         float x[4]    = { 1, 1, 1, 1 }; // 4x1 State vector
         float P[4*4]  = { 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f, 0, 0, 0, 0, 0.04f }; // 4x4 Covariance matrix of state vector
-        float R[3*3]  = { 0.25f, 0, 0, 0, 0.25f, 0, 0, 0, 0.25f }; // Covariance matrix of measurement
+        float R[3*3]  = { 0.25f, 0, 0, 0, 0.25f, 0, 0, 0, 0.25f }; // 3x3 Covariance matrix of measurement
         float dz[3]   = { 0.2688f, 0.9169f, -1.1294f }; // 3x1 Measurement residuals
-        float Ht[4*3] = { 8, 1, 6, 1, 3, 5, 7, 2, 4, 9, 2, 3 }; // Transposed design matrix / measurement sensitivity matrix, such that
+        float Ht[4*3] = { 8, 1, 6, 1, 3, 5, 7, 2, 4, 9, 2, 3 }; // 4x3 Transposed measurement sensitivity matrix H'
         int result    = kalman_takasu(x, P, dz, R, Ht, 4, 3, 0.0f, NULL); // Call to update routine
 
 ```
