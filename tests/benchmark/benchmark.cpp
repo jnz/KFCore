@@ -280,6 +280,16 @@ static int kalman_test1_udu_eigen(void)
     const int StateDim = 15;
     const int MeasDim  = 3;
 
+    // </kalman filter>
+    // Convert the arrays to Eigen variables with dynamic sizes
+    Matrix<float, MeasDim, MeasDim>   R  = Matrix<float, MeasDim, MeasDim>::Map(R_data);
+    Matrix<float, StateDim, 1>        x  = Matrix<float, StateDim, 1>::Map(x_data);
+    Matrix<float, StateDim, StateDim> P  = Matrix<float, StateDim, StateDim>::Map(P_data);
+    Matrix<float, StateDim, MeasDim>  Ht = Matrix<float, StateDim, MeasDim>::Map(Ht_data);
+    Matrix<float, MeasDim, StateDim>  H  = Ht.transpose();
+    Matrix<float, StateDim, StateDim> Phi = Matrix<float, StateDim, StateDim>::Map(Phi_data);
+    Matrix<float, StateDim, 3> G = Matrix<float, StateDim, 3>::Map(G_data);
+    Matrix<float, 3, 3> Q = Matrix<float, 3, 3>::Map(Q_data);
     Eigen::Matrix<float, StateDim, StateDim> U = Eigen::Matrix<float, StateDim, StateDim>::Identity();
     Eigen::Matrix<float, StateDim, 1>        d = P.diagonal();
 
