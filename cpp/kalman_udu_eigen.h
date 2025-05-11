@@ -93,7 +93,7 @@ int kalman_udu_eigen(
             Scalar mahalanobis_dist_sq = dz * dz / s;
             if (mahalanobis_dist_sq > chi2_threshold)
             {
-                if (!downweight_outlier) continue;
+                if (!downweight_outlier) { continue; }
                 const Scalar f = mahalanobis_dist_sq / chi2_threshold;
                 const Scalar new_Rv = (f - Scalar(1)) * HPHT + f * Rv;
                 if (kalman_udu_scalar_eigen<Scalar, StateDim>(x, U, d, dz, new_Rv, H.row(i)) != 0)
@@ -183,8 +183,9 @@ int decorrelate_eigen(
     Eigen::LLT<Eigen::Matrix<Scalar, MeasDim, MeasDim>> lltOfR(R);
     if (lltOfR.info() != Eigen::Success) { return -1; } // Cholesky decomposition failed
     auto L = lltOfR.matrixL();
-    z = L.transpose().triangularView<Eigen::Upper>().solve(z);
-    H = L.transpose().triangularView<Eigen::Upper>().solve(H);
+    auto Lt = L.transpose();
+    z = Lt.template triangularView<Eigen::Upper>().solve(z);
+    H = Lt.template triangularView<Eigen::Upper>().solve(H);
     R.setIdentity();
     return 0;
 }
