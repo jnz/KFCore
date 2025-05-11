@@ -2,7 +2,8 @@
  * KFCore
  * @author Jan Zwiener (jan@zwiener.org)
  *
- * @brief Navigation Toolbox Helper Functions for Eigen C++ Mathlib
+ * @brief Takasu Kalman Filter (C++ w. Eigen) Implementation for
+ * dynamic matrices dimensions at runtime.
  * @{ */
 
 /******************************************************************************
