@@ -314,7 +314,7 @@ static int kalman_test1_udu_eigen(void)
         kalman_udu_eigen<float, StateDim, MeasDim>(x, U, d, zdecor, Rdecor, Hdecor);
 
         // Predict
-        kalman_udu_predict_eigen<float, StateDim, 3>(x, U, d, Phi, G, Q_diag);
+        kalman_udu_predict_eigen<float, StateDim, 3>(x, U, d, Phi, G, Q.diagonal());
 
         xr[0] = x(0);
         xr[1] = x(1);

@@ -77,8 +77,8 @@ int kalman_udu_eigen(
     const Eigen::Matrix<Scalar, MeasDim, 1>& z,
     const Eigen::Matrix<Scalar, MeasDim, MeasDim>& R,
     const Eigen::Matrix<Scalar, MeasDim, StateDim>& H,
-    const Scalar chi2_threshold,
-    const bool downweight_outlier)
+    const Scalar chi2_threshold = Scalar(0),
+    const bool downweight_outlier = false)
 {
     int retcode = 0;
     for (int i = 0; i < MeasDim; ++i)
