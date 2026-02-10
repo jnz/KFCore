@@ -261,6 +261,61 @@ Now we can finally process the measurements in the Kalman filter update step:
         kalman_udu(x, U, d, z, eye, Ht, 4, 3, 0.0f, 0);
 ```
 
+### Quick Start UDU Filter in MATLAB
+
+The MATLAB implementation offers a convenient API that handles the UDU
+factorization and measurement decorrelation internally.
+
+#### 1. Initialization
+First, decompose your initial state covariance matrix $\mathbf{P}$ into the $\mathbf{U}$ and $\mathbf{D}$ factors.
+
+```matlab
+% System setup
+n = 4; % State dimension
+x = [1; 0; 0; 0];      % Initial state (n x 1)
+P = eye(n) * 0.5;      % Initial covariance (n x n)
+
+% Factorize P into U and D
+[U, d] = udu(P);       % U is unit upper triangular, d is diagonal vector
+```
+
+#### 2. Prediction (Time Update)
+Perform the time update using the transition matrix $\mathbf{\Phi}$ and process noise $\mathbf{Q}$.
+
+```matlab
+dt  = 0.1;
+Phi = [1 0 dt 0; 0 1 0 dt; 0 0 1 0; 0 0 0 1]; % State transition
+Q   = diag([0.1, 0.1]);                       % Process noise covariance
+G   = [0 0; 0 0; 1 0; 0 1];                   % Noise input matrix (n x r)
+
+% Updates x, U, and d in place for the next step
+[x, U, d] = kalman_udu_predict(x, Phi, U, d, G, Q);
+```
+
+#### 3. Correction (Measurement Update)
+Update the state with measurements $\mathbf{z}$.
+*Note: Unlike the C version, the MATLAB implementation automatically handles
+non-diagonal $\mathbf{R}$ matrices (correlated measurements) by performing an
+internal Cholesky decomposition.*
+
+```matlab
+z = [10.5; -2.1];          % Measurement vector (m x 1)
+R = [0.5 0.1; 0.1 0.5];    % Measurement noise covariance (m x m)
+H = [1 0 0 0; 0 1 0 0];    % Sensitivity matrix (m x n)
+
+% Perform the update
+[x, U, d] = kalman_udu(z, R, H, x, U, d);
+```
+
+#### 4. Robust Mode (Optional)
+To reject outliers based on the Mahalanobis distance ($\chi^2$-test), use `kalman_udu_robust`:
+
+```matlab
+chi2_gate = 6.635; % 99% confidence interval
+reject    = true;  % true: skip outlier; false: downweight outlier
+[x, U, d] = kalman_udu_robust(z, R, H, x, U, d, chi2_gate, reject);
+```
+
 ### Quick Start Takasu Filter in C++
 
 For C++ a template function is used in this example. Note that float can be replaced by double.
