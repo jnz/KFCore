@@ -294,9 +294,9 @@ G   = [0 0; 0 0; 1 0; 0 1];                   % Noise input matrix (n x r)
 
 #### 3. Correction (Measurement Update)
 Update the state with measurements $\mathbf{z}$.
-*Note: Unlike the C version, the MATLAB implementation automatically handles
+*Note:* Unlike the C version, the MATLAB implementation automatically handles
 non-diagonal $\mathbf{R}$ matrices (correlated measurements) by performing an
-internal Cholesky decomposition.*
+internal Cholesky decomposition.
 
 ```matlab
 z = [10.5; -2.1];          % Measurement vector (m x 1)
