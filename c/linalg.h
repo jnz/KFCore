@@ -20,7 +20,7 @@
  * DEFINES
  ******************************************************************************/
 
-#define MAT_ELEM(M, row, col, numrows, numcols) (M[row + col * numrows])
+#define MAT_ELEM(M, row, col, numrows, numcols) ((M)[(row) + (col) * (numrows)])
 #define SQRTF(x) sqrtf(x)
 
 /******************************************************************************
