@@ -59,7 +59,7 @@ int kalman_udu_scalar(float* x, float* U, float* d, const float dz, const float 
         // calculate: a = U'*H'
         int   tmpone   = 1;
         float tmpalpha = 1.0f;
-        memcpy(a, H_line, sizeof(a[0]) * n); // preload with H_line
+        memcpy(a, H_line, sizeof(a[0]) * (size_t)n); // preload with H_line
         strmm_("L", "U", "T", "U", &n, &tmpone, &tmpalpha, U, &n, a, &n);
     }
 
@@ -179,25 +179,25 @@ void kalman_udu_predict(float* x, float* U, float* d, const float* Phi,
     if (x) //  if prediction of state vector is requested: x = Phi*x;
     {
         float tmp[KALMAN_MAX_STATE_SIZE];
-        memcpy(tmp, x, sizeof(x[0])*n);
+        memcpy(tmp, x, sizeof(x[0])*(size_t)n);
         matmul("N", "N", n, 1, n, 1.0f, Phi, tmp, 0.0f, x);
     }
 
     // G_tmp = G; // move to internal array for destructive updates
     float G_tmp[KALMAN_MAX_STATE_SIZE*KALMAN_MAX_STATE_SIZE];
-    memcpy(G_tmp, G, sizeof(G_tmp[0])*n*r);
+    memcpy(G_tmp, G, sizeof(G_tmp[0])*(size_t)n*(size_t)r);
 
     // PhiU  = Phi*U; // rows of [PhiU,G] are to be orthogonalized
     float PhiU[KALMAN_MAX_STATE_SIZE*KALMAN_MAX_STATE_SIZE];
     float tmpalpha = 1.0f;
-    memcpy(PhiU, Phi, sizeof(Phi[0])*n*n);
+    memcpy(PhiU, Phi, sizeof(Phi[0])*(size_t)n*(size_t)n);
     strmm_("R", "U", "N", "U", &n, &n, &tmpalpha, U, &n, PhiU, &n);
 
     mateye(U, n); // U = eye(n)
 
     // save origin input d vector
     float din[KALMAN_MAX_STATE_SIZE];
-    memcpy(din, d, sizeof(d[0])*n); // din = d
+    memcpy(din, d, sizeof(d[0])*(size_t)n); // din = d
 
     for (int i = n-1; i >= 0; i--)
     {

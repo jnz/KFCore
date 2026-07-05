@@ -17,6 +17,16 @@
 
 #include "miniblas.h"
 
+/* This is reference-BLAS-style code: throughout this file, scalars like
+   alpha/beta are checked against the exact literals 0.0f/1.0f to skip
+   redundant multiplies (a standard BLAS idiom, e.g. "if (*alpha == 0.f)").
+   These are exact-equality checks against a caller-supplied literal, not
+   the "comparing computed/accumulated results" anti-pattern that
+   -Wfloat-equal (and coding_style.md's exact-equality rule) targets, so
+   the warning is suppressed file-wide here rather than at ~50 call
+   sites. */
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+
 /******************************************************************************
  * DEFINES
  ******************************************************************************/
@@ -516,8 +526,8 @@ int strsm_(const char* side, const char* uplo, const char* transa, const char* d
     return 0;
 }
 
-int sgemm_(char* transa, char* transb, int* m, int* n, int* k, float* alpha, float* a, int* lda,
-          float* b, int* ldb, float* beta, float* c__, int* ldc)
+int sgemm_(const char* transa, const char* transb, int* m, int* n, int* k, float* alpha, float* a,
+          int* lda, float* b, int* ldb, float* beta, float* c__, int* ldc)
 {
     int a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset, i__1, i__2, i__3;
     /* Local variables */
@@ -896,8 +906,8 @@ int sgemm_(char* transa, char* transb, int* m, int* n, int* k, float* alpha, flo
     return 0;
 }
 
-int ssyrk_(char* uplo, char* trans, int* n, int* k, float* alpha, float* a, int* lda, float* beta,
-          float* c__, int* ldc)
+int ssyrk_(const char* uplo, const char* trans, int* n, int* k, float* alpha, float* a, int* lda,
+          float* beta, float* c__, int* ldc)
 {
     int a_dim1, a_offset, c_dim1, c_offset, i__1, i__2, i__3;
 
@@ -1272,8 +1282,8 @@ int ssyrk_(char* uplo, char* trans, int* n, int* k, float* alpha, float* a, int*
     return 0;
 }
 
-int ssymm_(char* side, char* uplo, int* m, int* n, float* alpha, float* a, int* lda, float* b,
-          int* ldb, float* beta, float* c__, int* ldc)
+int ssymm_(const char* side, const char* uplo, int* m, int* n, float* alpha, float* a, int* lda,
+          float* b, int* ldb, float* beta, float* c__, int* ldc)
 {
     int a_dim1, a_offset, b_dim1, b_offset, c_dim1, c_offset, i__1, i__2, i__3;
     /* Local variables */

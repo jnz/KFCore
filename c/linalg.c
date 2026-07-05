@@ -45,7 +45,7 @@ void matmul(const char* ta, const char* tb, int n, int k, int m, float alpha, co
 {
     int lda    = lsame_(ta, "T") ? m : n;
     int ldb    = lsame_(tb, "T") ? k : m;
-    int result = sgemm_((char*)ta, (char*)tb, &n, &k, &m, &alpha, (float*)A, &lda, (float*)B, &ldb,
+    int result = sgemm_(ta, tb, &n, &k, &m, &alpha, (float*)A, &lda, (float*)B, &ldb,
                        &beta, C, &n);
     assert(result == 0);
 }
@@ -63,7 +63,7 @@ void matmulsym(const float* A_sym, const float* B, int n, int m, float* C)
 
 void mateye(float* A, int n)
 {
-    memset(A, 0, sizeof(float) * n * n);
+    memset(A, 0, sizeof(float) * (size_t)n * (size_t)n);
     for (int i = 0; i < n; i++)
     {
         MAT_ELEM(A, i, i, n, n) = 1.0f;
@@ -173,8 +173,8 @@ int udu(const float* A, float* U, float* d, const int m)
     int   i, j, k;
     float sigma;
 
-    memset(U, 0, sizeof(U[0]) * m * m);
-    memset(d, 0, sizeof(d[0]) * m);
+    memset(U, 0, sizeof(U[0]) * (size_t)m * (size_t)m);
+    memset(d, 0, sizeof(d[0]) * (size_t)m);
 
     for (j = m - 1; j >= 0; j--) /* UDU decomposition */
     {
