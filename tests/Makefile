@@ -7,7 +7,6 @@ CFLAGS += -I/usr/include/eigen3
 CFLAGS += -I../c/ -I../cpp -Ibenchmark -I../c/navigation_tools
 
 SOURCES += test.c
-SOURCES += ../c/navigation_tools/navtoolbox.c
 SOURCES += ../c/linalg.c
 SOURCES += ../c/miniblas.c
 SOURCES += ../c/kalman_udu.c
@@ -19,7 +18,6 @@ HEADERS = linalg.h
 HEADERS += miniblas.h
 HEADERS += kalman_takasu.h
 HEADERS += kalman_udu.h
-HEADERS += navtoolbox.h
 HEADERS += benchmark/benchmark.h
 
 OUTPUT = kfcoretest

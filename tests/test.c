@@ -18,7 +18,6 @@
  ******************************************************************************/
 
 #include "linalg.h"
-#include "navtoolbox.h"
 #include "kalman_takasu.h"
 #include "kalman_udu.h"
 #include "benchmark/benchmark.h"
@@ -29,6 +28,11 @@
 
 #define TEST_FLOAT_WITHIN(delta, expected, actual, message)                                        \
     assert((fabsf((expected) - (actual)) <= delta) && message)
+
+#define DEG2RAD(x)       (((x) * (float)M_PI / 180.0f))
+#define RAD2DEG(x)       ((x) * 180.0f / (float)M_PI)
+
+#define GRAVITY          (9.80665f)
 
 /******************************************************************************
  * TYPEDEFS
@@ -53,7 +57,46 @@ static void hilbert(float* H, int n);
  * @param[in] m cols
  * @param[in] fmt printf format string, e.g. "%.3f"
  * @param[in] name Pretty print with the name of the matrix, can be NULL */
-static void matprint(const float* R, const int n, const int m, const char* fmt, const char* name);
+static void matprint(const float* R, const int n, const int m, const char* fmt,
+                     const char* name);
+
+/** @brief Calculate an approximate orientation from accelerometer data,
+ * assuming that the accelerometer measurement is mainly gravity.
+ * Beware that the equations become nearly singular near 90 degrees pitch.
+ *
+ * @param[in] f Specific force measurement x,y,z component (m/s^2)
+ * @param[out] roll_rad Output roll angle (rad)
+ * @param[out] pitch_rad Output pitch angle (rad) */
+static void nav_roll_pitch_from_accelerometer(const float f[3], float*
+                                              roll_rad, float* pitch_rad);
+
+/** @brief Calculate a matrix R that transforms from
+ * the body-frame (b) to the navigation-frame (n): R^n_b.
+ * @param[in] roll_rad Roll angle in (rad)
+ * @param[in] pitch_rad Pitch angle in (rad)
+ * @param[in] yaw_rad Yaw angle in (rad)
+ * @param[out] R_output Output 3x3 matrix in column-major format */
+static void nav_matrix_body2nav(const float roll_rad, const float pitch_rad,
+                                const float yaw_rad, float R_output[9]);
+
+/** @brief Calculate the magnetic heading from magnetometer measurements.
+ * The orientation (roll/pitch) of the magnetometer measurements must be known.
+ * The magnetometer measurements are given in the body frame.
+ *
+ * Note: Beware of pitch angles near +/- 90 degrees.
+ *
+ * @param[in] mb (3x1) Magnetometer measurement in body frame (Tesla or Gauss).
+ *                     x (mb[0]) pointing to forward/roll-axis of the vehicle,
+ *                     y (mb[1]) pointing to the right of the vehicle (pitch axis)
+ *                     z (mb[2]) pointing down (yaw-axis)
+ * @param[in] roll_rad Roll angle (rad) of the vehicle relative to Earth tangent plane n-frame.
+ * @param[in] pitch_rad Pitch angle (rad) of the vehicle relative to Earth tangent plane n-frame.
+ *
+ * @return Calculated output yaw angle (rad) of the vehicle relative to magnetic North.
+ *
+ * Note: This is not the geodetic heading, no declination correction is applied. */
+static float nav_mag_heading(const float mb[3],
+                             float roll_rad, float pitch_rad);
 
 /******************************************************************************
  * FUNCTION BODIES
@@ -562,6 +605,60 @@ static void matprint(const float* R, const int n, const int m, const char* fmt, 
             printf("\t");
         }
     }
+}
+
+static void nav_roll_pitch_from_accelerometer(const float f[3], float* roll_rad, float* pitch_rad)
+{
+    /* Source: Farrell, Jay. Aided navigation: GPS with high rate sensors.
+     * McGraw-Hill, Inc., 2008.  */
+    if (roll_rad)
+    {
+        *roll_rad = atan2f(-f[1], -f[2]); /* eq. 10.14 */
+    }
+    if (pitch_rad)
+    {
+        *pitch_rad = atan2f(f[0], SQRTF(f[1] * f[1] + f[2] * f[2])); /* eq. 10.15 */
+    }
+}
+
+static void nav_matrix_body2nav(const float roll_rad, const float pitch_rad, const float yaw_rad,
+                         float R_output[9])
+{
+    const float sinr = sinf(roll_rad);
+    const float sinp = sinf(pitch_rad);
+    const float siny = sinf(yaw_rad);
+    const float cosr = cosf(roll_rad);
+    const float cosp = cosf(pitch_rad);
+    const float cosy = cosf(yaw_rad);
+    /* Source: Farrell, Jay. Aided navigation: GPS with high rate sensors.
+     * McGraw-Hill, Inc., 2008. eq. 2.43 */
+    R_output[0] = cosp * cosy;
+    R_output[1] = cosp * siny;
+    R_output[2] = -sinp;
+    R_output[3] = sinr * sinp * cosy - cosr * siny;
+    R_output[4] = sinr * sinp * siny + cosr * cosy;
+    R_output[5] = sinr * cosp;
+    R_output[6] = cosr * sinp * cosy + sinr * siny;
+    R_output[7] = cosr * sinp * siny - sinr * cosy;
+    R_output[8] = cosr * cosp;
+}
+
+static float nav_mag_heading(const float mb[3], float roll_rad, float pitch_rad)
+{
+    const float sinr = sinf(roll_rad);
+    const float sinp = sinf(pitch_rad);
+    const float cosr = cosf(roll_rad);
+    const float cosp = cosf(pitch_rad);
+
+    /* Source: Farrell, Jay. Aided navigation: GPS with high rate sensors.
+     * McGraw-Hill, Inc., 2008.  */
+    /* Transform the magnetometer measurement in the body frame (mb) to the
+     * w-frame.  The w-frame is an intermediate frame of reference defined by the
+     * projection of the vehicle u-axis onto the Earth tangent plane */
+    float mw_x = cosp*mb[0] + sinp*sinr*mb[1] + sinp*cosr*mb[2]; /* eq. 10.16 */
+    float mw_y =                   cosr*mb[1] -      sinr*mb[2]; /* eq. 10.16 */
+
+    return atan2f(-mw_y, mw_x);
 }
 
 /* @} */
