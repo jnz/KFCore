@@ -201,16 +201,24 @@ void kalman_udu_predict(float* x, float* U, float* d, const float* Phi,
 
     for (int i = n-1; i >= 0; i--)
     {
+        // d[i] is the weighted norm of row i of [PhiU, G]: BOTH sums must
+        // run over the full column count of their matrix (n for PhiU, r
+        // for G). The G sum used to be folded into the n-loop with an
+        // "if (j < r)" guard, silently dropping the noise columns
+        // n..r-1 whenever r > n -- while the U(j,i) numerator below sums
+        // all r columns. The mismatched numerator/denominator corrupted
+        // U, inflating the covariance of the leading states a little
+        // more with every call (see the "r > n" regression test).
         float sigma = 0.0f;
         for (int j=0;j<n;j++)
         {
             sigma += MAT_ELEM(PhiU, i, j, n, n) *
                      MAT_ELEM(PhiU, i, j, n, n) * din[j];
-            if (j < r)
-            {
-                sigma += MAT_ELEM(G_tmp, i, j, n, r) *
-                         MAT_ELEM(G_tmp, i, j, n, r) * Q[j];
-            }
+        }
+        for (int j=0;j<r;j++)
+        {
+            sigma += MAT_ELEM(G_tmp, i, j, n, r) *
+                     MAT_ELEM(G_tmp, i, j, n, r) * Q[j];
         }
         d[i] = sigma;
         for (int j=0;j<i;j++)

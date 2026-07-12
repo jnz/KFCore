@@ -548,6 +548,186 @@ static void testnavtoolbox(void)
         }
         printf("[x] UDU Kalman Filter Prediction Test\n");
     }
+    // UDU vs. conventional prediction with more noise inputs than states
+    // (r > n). Regression test: the Thornton implementation used to drop
+    // the G/Q noise columns n..r-1 from the diagonal d[i] computation,
+    // while the off-diagonal U numerators correctly summed all r columns.
+    // The mismatched numerator/denominator in U(j,i) = sigma/d(i) makes
+    // the U/d factors drift away from the true covariance, and repeated
+    // predictions inflate the covariance of the leading states by orders
+    // of magnitude. Scenario captured from a 15-state GNSS/INS error-state
+    // filter (pos/vel/att NED + acc/gyr bias; 12 IMU noise inputs plus 15
+    // per-state process noise columns, r = 27) during a driven turn at
+    // 20 m/s: over the 40 prediction steps (dt = 10 ms) between two GNSS
+    // fixes the reported north position sigma grew from 2.5 m to 182 m,
+    // while the conventional propagation (kalman_predict) stays at 2.5 m.
+    // The reference is the exact P = Phi*P*Phi' + G*diag(Q)*G'.
+    {
+        enum { n = 15, r = 12 + n };
+        const float dt = 0.01f;
+
+        /* R^n_b (column-major 3x3) */
+        const float R_b2n[9] = {
+            3.420661688e-01f, 9.395312071e-01f, -1.648036949e-02f,
+            -9.396541119e-01f, 3.421245813e-01f, 7.797265425e-04f,
+            6.370918825e-03f, 1.521913055e-02f, 9.998637438e-01f,
+        };
+        /* bias-corrected specific force (body frame, m/s^2) */
+        const float f_b[3] = { 4.869354371e-02f, 2.293688035e+00f, -9.862355076e+00f };
+        /* start covariance, captured right after a GNSS position/velocity
+           fusion (column-major 15x15, symmetric) */
+        static const float P_captured[15 * 15] = {
+            6.275630951e+00f, -2.096741796e-01f, 2.693099086e-04f, 9.683361714e-05f,
+            -2.414057599e-05f, -8.205005543e-06f, -5.065396067e-07f, -1.533648515e-07f,
+            -2.775529708e-07f, -1.006490891e-08f, -3.841195849e-06f, -9.283506586e-08f,
+            1.753609169e-08f, 3.250868463e-09f, -2.067388394e-08f, -2.096741796e-01f,
+            3.429657936e+00f, -1.217236277e-02f, -1.254909672e-03f, 4.301865993e-04f,
+            1.622411364e-04f, 3.027708590e-05f, -3.794940767e-06f, 3.102736446e-05f,
+            8.148734923e-05f, 2.090147173e-04f, 1.820889156e-05f, -9.363282629e-07f,
+            6.758882876e-08f, -5.397930636e-08f, 2.693099086e-04f, -1.217236277e-02f,
+            3.339066744e+00f, -9.021248668e-03f, 2.772434673e-04f, 1.075744512e-03f,
+            2.299123735e-04f, -6.481336459e-05f, 4.245445016e-04f, 7.868356770e-04f,
+            1.705709845e-03f, 1.400194742e-04f, -5.087721547e-06f, 1.085206350e-06f,
+            -1.369184884e-05f, 9.683361714e-05f, -1.254909672e-03f, -9.021248668e-03f,
+            2.600157633e-03f, -1.361552568e-04f, 4.156612704e-05f, 1.057054615e-04f,
+            -3.462216409e-05f, 1.371711987e-04f, 4.146613355e-04f, 6.951030227e-04f,
+            8.348078700e-05f, -3.070508001e-06f, 6.825728178e-07f, -2.617930477e-06f,
+            -2.414057599e-05f, 4.301865993e-04f, 2.772434673e-04f, -1.361552568e-04f,
+            2.320276806e-03f, 3.345407313e-04f, 1.232088289e-05f, 3.415871470e-05f,
+            -1.507329725e-04f, -1.218195466e-04f, 3.275835479e-05f, 2.714509719e-06f,
+            -2.031447366e-06f, -6.938698220e-07f, 1.204643468e-05f, -8.205005543e-06f,
+            1.622411364e-04f, 1.075744512e-03f, 4.156612704e-05f, 3.345407313e-04f,
+            1.160995220e-03f, 1.397654887e-05f, 2.447431507e-05f, 7.344139885e-05f,
+            -2.740010095e-04f, 2.769560379e-04f, -4.650793562e-05f, 1.056897304e-06f,
+            -2.165951969e-07f, -4.471836291e-06f, -5.065396067e-07f, 3.027708590e-05f,
+            2.299123735e-04f, 1.057054615e-04f, 1.232088289e-05f, 1.397654887e-05f,
+            1.830104520e-05f, -5.232201147e-06f, 4.234128210e-05f, 5.178011997e-05f,
+            7.421223563e-05f, 1.086221073e-05f, -9.406794561e-07f, 3.179075065e-07f,
+            -7.664800705e-07f, -1.533648515e-07f, -3.794940767e-06f, -6.481336459e-05f,
+            -3.462216409e-05f, 3.415871470e-05f, 2.447431507e-05f, -5.232201147e-06f,
+            4.740915756e-06f, -1.637232344e-05f, -2.954669071e-05f, 1.640356459e-06f,
+            -1.958109578e-06f, 3.838594012e-07f, -2.628139839e-07f, 3.312841841e-07f,
+            -2.775529708e-07f, 3.102736446e-05f, 4.245445016e-04f, 1.371711987e-04f,
+            -1.507329725e-04f, 7.344139885e-05f, 4.234128210e-05f, -1.637232344e-05f,
+            1.712403027e-04f, 2.056307130e-05f, 1.447079121e-04f, 1.271651126e-05f,
+            -1.873234282e-06f, 1.595513481e-06f, -6.113786640e-06f, -1.006490891e-08f,
+            8.148734923e-05f, 7.868356770e-04f, 4.146613355e-04f, -1.218195466e-04f,
+            -2.740010095e-04f, 5.178011997e-05f, -2.954669071e-05f, 2.056307130e-05f,
+            4.916741746e-04f, 1.355423592e-04f, 5.622779281e-05f, -3.718324479e-06f,
+            -9.177537663e-08f, 3.531997891e-06f, -3.841195849e-06f, 2.090147173e-04f,
+            1.705709845e-03f, 6.951030227e-04f, 3.275835479e-05f, 2.769560379e-04f,
+            7.421223563e-05f, 1.640356459e-06f, 1.447079121e-04f, 1.355423592e-04f,
+            5.903920392e-04f, 6.304989074e-05f, -1.712204835e-06f, -5.494115953e-07f,
+            -4.890363471e-06f, -9.283506586e-08f, 1.820889156e-05f, 1.400194742e-04f,
+            8.348078700e-05f, 2.714509719e-06f, -4.650793562e-05f, 1.086221073e-05f,
+            -1.958109578e-06f, 1.271651126e-05f, 5.622779281e-05f, 6.304989074e-05f,
+            1.515639269e-05f, -4.886890679e-07f, -1.009280908e-07f, -2.190714099e-08f,
+            1.753609169e-08f, -9.363282629e-07f, -5.087721547e-06f, -3.070508001e-06f,
+            -2.031447366e-06f, 1.056897304e-06f, -9.406794561e-07f, 3.838594012e-07f,
+            -1.873234282e-06f, -3.718324479e-06f, -1.712204835e-06f, -4.886890679e-07f,
+            6.952762277e-08f, -2.420478040e-08f, -1.405859074e-08f, 3.250868463e-09f,
+            6.758882876e-08f, 1.085206350e-06f, 6.825728178e-07f, -6.938698220e-07f,
+            -2.165951969e-07f, 3.179075065e-07f, -2.628139839e-07f, 1.595513481e-06f,
+            -9.177537663e-08f, -5.494115953e-07f, -1.009280908e-07f, -2.420478040e-08f,
+            2.805341026e-08f, -4.141682197e-08f, -2.067388394e-08f, -5.397930636e-08f,
+            -1.369184884e-05f, -2.617930477e-06f, 1.204643468e-05f, -4.471836291e-06f,
+            -7.664800705e-07f, 3.312841841e-07f, -6.113786640e-06f, 3.531997891e-06f,
+            -4.890363471e-06f, -2.190714099e-08f, -1.405859074e-08f, -4.141682197e-08f,
+            3.836048847e-07f,
+        };
+
+        /* specific force in the n-frame: f_n = R^n_b * f_b */
+        float f_n[3];
+        matmul("N", "N", 3, 1, 3, 1.0f, R_b2n, f_b, 0.0f, f_n);
+
+        /* error-state layout: pos(0-2), vel(3-5), att(6-8),
+           acc-bias(9-11), gyr-bias(12-14). Transition: pos <- vel,
+           vel <- [f_n]x * att, vel <- -R * acc-bias, att <- -R * gyr-bias */
+        float Phi[n * n];
+        mateye(Phi, n);
+        for (int i = 0; i < 3; i++)
+        {
+            MAT_ELEM(Phi, 0 + i, 3 + i, n, n) += dt;
+        }
+        MAT_ELEM(Phi, 3, 7, n, n) += +f_n[2] * dt;
+        MAT_ELEM(Phi, 3, 8, n, n) += -f_n[1] * dt;
+        MAT_ELEM(Phi, 4, 6, n, n) += -f_n[2] * dt;
+        MAT_ELEM(Phi, 4, 8, n, n) += +f_n[0] * dt;
+        MAT_ELEM(Phi, 5, 6, n, n) += +f_n[1] * dt;
+        MAT_ELEM(Phi, 5, 7, n, n) += -f_n[0] * dt;
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                MAT_ELEM(Phi, 3 + i, 9 + j, n, n) += -MAT_ELEM(R_b2n, i, j, 3, 3) * dt;
+                MAT_ELEM(Phi, 6 + i, 12 + j, n, n) += -MAT_ELEM(R_b2n, i, j, 3, 3) * dt;
+            }
+        }
+
+        /* noise mapping G (n x r) and diagonal Q (r x 1): columns 0-2
+           accel white noise -> vel, 3-5 gyro white noise -> att, 6-11
+           bias random walks, 12-26 additional per-state process noise */
+        float G[n * r];
+        float Q[r];
+        memset(G, 0, sizeof(G));
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                MAT_ELEM(G, 3 + i, 0 + j, n, r) = MAT_ELEM(R_b2n, i, j, 3, 3);
+                MAT_ELEM(G, 6 + i, 3 + j, n, r) = -MAT_ELEM(R_b2n, i, j, 3, 3);
+            }
+            MAT_ELEM(G, 9 + i, 6 + i, n, r) = 1.0f;
+            MAT_ELEM(G, 12 + i, 9 + i, n, r) = 1.0f;
+            Q[0 + i] = 3.846815369e-06f * dt; /* accel PSD (m/s^2)^2/Hz */
+            Q[3 + i] = 3.384637998e-11f * dt; /* gyro PSD (rad/s)^2/Hz */
+            Q[6 + i] = 1.0e-07f * dt;         /* accel bias RW PSD */
+            Q[9 + i] = 2.0e-12f * dt;         /* gyro bias RW PSD */
+        }
+        for (int i = 0; i < n; i++)
+        {
+            MAT_ELEM(G, i, 12 + i, n, r) = 1.0f;
+        }
+        /* per-state extra process noise: pos 0.01 m, vel 0.05 m/s,
+           att 0.01 deg, biases 0 (their random walk is in cols 6-11) */
+        const float sigma_extra[5] = { 0.01f, 0.05f, DEG2RAD(0.01f), 0.0f, 0.0f };
+        for (int i = 0; i < n; i++)
+        {
+            const float s = sigma_extra[i / 3];
+            Q[12 + i] = s * s * dt;
+        }
+
+        /* same start, two propagation paths */
+        float P[n * n];
+        memcpy(P, P_captured, sizeof(P));
+        float U[n * n];
+        float d[n];
+        int result = udu(P_captured, U, d, n);
+        assert(result == 0);
+
+        for (int step = 0; step < 40; step++)
+        {
+            kalman_predict((float*)0, P, Phi, G, Q, n, r);
+            kalman_udu_predict((float*)0, U, d, Phi, G, Q, n, r);
+        }
+
+        /* reconstruct diag(U*diag(d)*U') and compare both paths */
+        for (int i = 0; i < n; i++)
+        {
+            float p_udu = 0.0f;
+            for (int k = 0; k < n; k++)
+            {
+                const float u_ik = MAT_ELEM(U, i, k, n, n);
+                p_udu += u_ik * u_ik * d[k];
+            }
+            const float sig_ref = sqrtf(MAT_ELEM(P, i, i, n, n));
+            const float sig_udu = sqrtf(p_udu);
+            TEST_FLOAT_WITHIN(0.02f * sig_ref + 1.0e-6f, sig_ref, sig_udu,
+                              "kalman_udu_predict diverges from conventional "
+                              "prediction for r > n");
+        }
+        printf("[x] UDU Kalman Filter Prediction Test (r > n)\n");
+    }
 }
 
 /* ---------------------------------------------------------------------------

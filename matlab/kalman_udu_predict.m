@@ -47,12 +47,18 @@ PhiU  = Phi*Uin;   % rows of [PhiU,G] are to be orthogonalized
 U     = eye(n);    % initialize lower triangular part of U
 d     = din*0;
 for i=n:-1:1
+    % d(i) is the weighted norm of row i of [PhiU, G]: BOTH sums must run
+    % over the full column count of their matrix (n for PhiU, r for G).
+    % Folding the G sum into the n-loop would silently drop the noise
+    % columns n+1..r whenever r > n, while the U(j,i) numerator below
+    % sums all r columns -- the mismatch corrupts U and inflates the
+    % covariance of the leading states with every call.
     sigma = 0;
     for j=1:n
         sigma = sigma + PhiU(i,j)^2 *din(j);
-        if (j <= r)
-            sigma = sigma + G(i,j)^2 *Q(j,j);
-        end
+    end
+    for j=1:r
+        sigma = sigma + G(i,j)^2 *Q(j,j);
     end
     d(i) = sigma;
     for j=1:i-1
