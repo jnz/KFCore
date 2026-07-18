@@ -129,7 +129,7 @@ void kalman_predict_eigen(
 /** @brief Kalman Filter Update Routine for arbitrary matrix dimensions, based on the
  * Takasu method. This is function is typically slower than the template function
  * above, but more flexible, which could be useful in some scenarios.
- * The algorithm is basically the same compared to kalman_takasu_eigen.
+ * The algorithm is the same as kalman_takasu_eigen.
  *
  * n = StateDim (dimension of x), m = MeasDim (dimension of dz)
  *

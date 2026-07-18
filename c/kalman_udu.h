@@ -139,7 +139,7 @@ extern "C"
      *
      * (*) Optional, as a non-linear filter will do the prediction of the state vector
      * with a dedicated (non-linear) function.
-     * This will basically just predict the state vector with:
+     * This predicts the state vector with:
      *
      *      x^{-} = Phi*x^{+}
      *      P^{+} = Phi*P^{-}*Phi' + G*diag(Q)*G'

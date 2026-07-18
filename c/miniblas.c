@@ -17,14 +17,13 @@
 
 #include "miniblas.h"
 
-/* This is reference-BLAS-style code: throughout this file, scalars like
-   alpha/beta are checked against the exact literals 0.0f/1.0f to skip
-   redundant multiplies (a standard BLAS idiom, e.g. "if (*alpha == 0.f)").
-   These are exact-equality checks against a caller-supplied literal, not
-   the "comparing computed/accumulated results" anti-pattern that
-   -Wfloat-equal (and coding_style.md's exact-equality rule) targets, so
-   the warning is suppressed file-wide here rather than at ~50 call
-   sites. */
+/* Reference-BLAS-style code: scalars like alpha/beta are checked against
+   exact literals 0.0f/1.0f to skip redundant multiplies (standard BLAS
+   idiom, e.g. "if (*alpha == 0.f)"). These are exact-equality checks
+   against a caller-supplied literal, not the "comparing computed/
+   accumulated results" anti-pattern -Wfloat-equal (and coding_style.md's
+   exact-equality rule) targets. The warning is suppressed file-wide here
+   rather than at ~50 call sites. */
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 
 /******************************************************************************

@@ -119,7 +119,7 @@ void trisolve(const float* A, float* B, int n, int m, const char* tp)
         strsm_("L" /* left hand*/, "L" /* lower triangular matrix */, tp /* transpose L? */,
               "N" /* L is not unit triangular */, &n, &m, &alpha, A, &n, B, &n);
     assert(result == 0);
-    /* strsm basically just checks for proper matrix dimensions, handle via assert */
+    /* strsm only checks matrix dimensions, handled via assert */
 }
 
 void trisolveright(const float* L, float* A, int n, int m, const char* tp)
@@ -129,7 +129,7 @@ void trisolveright(const float* L, float* A, int n, int m, const char* tp)
         strsm_("R" /* right hand*/, "L" /* lower triangular matrix */, tp /* transpose L? */,
               "N" /* L is not unit triangular */, &m, &n, &alpha, L, &n, A, &m);
     assert(result == 0);
-    /* strsm basically just checks for proper matrix dimensions, handle via assert */
+    /* strsm only checks matrix dimensions, handled via assert */
 }
 
 void symmetricrankupdate(float* P, const float* E, int n, int m)
