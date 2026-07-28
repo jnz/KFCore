@@ -36,7 +36,7 @@ You could use the `Joseph Form` to mitigate the numerical issues of the standard
 
 - **High Numerical Stability**
   - Implements the **UDU** (Bierman/Thornton) algorithms for superior numerical stability compared to the standard Kalman Filter formulations [(2)](https://ntrs.nasa.gov/api/citations/20180003657/downloads/20180003657.pdf).
-  - Includes the **Takasu formulation**, a fast and efficient implementation if you don't want a square root formulation such as the `UDU` filter.
+  - Includes the **Takasu formulation**, a fast and efficient implementation if you don't want a square root formulation such as the `UDU` filter [(3)](https://gpspp.sakura.ne.jp/diary201207.htm).
 
 - **Focus on Embedded Targets**
   - Uses only **static memory allocation**, ensuring guaranteed runtime and memory usage suitable for resource-constrained environments.
@@ -369,6 +369,7 @@ This project is licensed under the modified BSD-3-Clause License - see the [LICE
 
 1. Chang, G. (2014). *Robust Kalman filtering based on Mahalanobis distance as outlier judging criterion*. **Journal of Geodesy**, **88**(4), 391-401.
 2. Carpenter, J. Russell, and Christopher N. D’souza (2018). [*Navigation Filter Best Practices*](https://ntrs.nasa.gov/api/citations/20180003657/downloads/20180003657.pdf). No. NF1676L-29886.
+3. T. Takasu (2012). Web Diary/Memorandum. [https://gpspp.sakura.ne.jp/diary201207.htm](https://gpspp.sakura.ne.jp/diary201207.htm)
 
 ## Acknowledgments
 
