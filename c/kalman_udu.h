@@ -16,6 +16,14 @@
  * DEFINES
  ******************************************************************************/
 
+/* restrict is a C99/C11 keyword, not valid in C++. This header is also
+ * included from C++ translation units (e.g. the benchmark). */
+#ifdef __cplusplus
+#define KFC_RESTRICT
+#else
+#define KFC_RESTRICT restrict
+#endif
+
 /******************************************************************************
  * TYPEDEFS
  ******************************************************************************/
@@ -55,9 +63,9 @@ extern "C"
      *
      * @return 0 on success, -1 on error.
      */
-    int kalman_udu(float* restrict x, float* restrict U, float* restrict d,
-                   const float* restrict z, const float* restrict R,
-                   const float* restrict Ht, int n, int m,
+    int kalman_udu(float* KFC_RESTRICT x, float* KFC_RESTRICT U, float* KFC_RESTRICT d,
+                   const float* KFC_RESTRICT z, const float* KFC_RESTRICT R,
+                   const float* KFC_RESTRICT Ht, int n, int m,
                    float chi2_threshold, int downweight_outlier);
 
     /** @brief Square Root Kalman Filter (Bierman) Routine for a single scalar measurement.
@@ -72,9 +80,9 @@ extern "C"
      * @param[in] H_line Row of measurement sensitivity matrix (n x 1)
      * @param[in] n     Number of state variables
      */
-    int kalman_udu_scalar(float* restrict x, float* restrict U, float* restrict d,
+    int kalman_udu_scalar(float* KFC_RESTRICT x, float* KFC_RESTRICT U, float* KFC_RESTRICT d,
                           const float dz, const float R,
-                          const float* restrict H_line, int n);
+                          const float* KFC_RESTRICT H_line, int n);
 
     /** @brief Decorrelate measurements. For a given covariance matrix R of correlated measurements,
      * calculate a vector of decorrelated measurements (and the matching H-matrix) so that
@@ -153,9 +161,9 @@ extern "C"
      *  [1] Grewal, Weill, Andrews. "Global positioning systems, inertial
      *      navigation, and integration". 1st ed. John Wiley & Sons, New York, 2001.
      */
-    int kalman_udu_predict(float* restrict x, float* restrict U, float* restrict d,
-                           const float* restrict Phi, const float* restrict G,
-                           const float* restrict Q, int n, int r);
+    int kalman_udu_predict(float* KFC_RESTRICT x, float* KFC_RESTRICT U, float* KFC_RESTRICT d,
+                           const float* KFC_RESTRICT Phi, const float* KFC_RESTRICT G,
+                           const float* KFC_RESTRICT Q, int n, int r);
 
 #ifdef __cplusplus
 }
