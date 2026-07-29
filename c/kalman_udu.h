@@ -55,8 +55,10 @@ extern "C"
      *
      * @return 0 on success, -1 on error.
      */
-    int kalman_udu(float* x, float* U, float* d, const float* z, const float* R,
-                   const float* Ht, int n, int m, float chi2_threshold, int downweight_outlier);
+    int kalman_udu(float* restrict x, float* restrict U, float* restrict d,
+                   const float* restrict z, const float* restrict R,
+                   const float* restrict Ht, int n, int m,
+                   float chi2_threshold, int downweight_outlier);
 
     /** @brief Square Root Kalman Filter (Bierman) Routine for a single scalar measurement.
      *
@@ -70,8 +72,9 @@ extern "C"
      * @param[in] H_line Row of measurement sensitivity matrix (n x 1)
      * @param[in] n     Number of state variables
      */
-    int kalman_udu_scalar(float* x, float* U, float* d, const float dz, const float R,
-                          const float* H_line, int n);
+    int kalman_udu_scalar(float* restrict x, float* restrict U, float* restrict d,
+                          const float dz, const float R,
+                          const float* restrict H_line, int n);
 
     /** @brief Decorrelate measurements. For a given covariance matrix R of correlated measurements,
      * calculate a vector of decorrelated measurements (and the matching H-matrix) so that
@@ -137,6 +140,8 @@ extern "C"
      *  @param[in] n       State vector size n.
      *  @param[in] r       Process noise matrix size.
      *
+     * @return 0 on success, -1 on error.
+     *
      * (*) Optional, as a non-linear filter will do the prediction of the state vector
      * with a dedicated (non-linear) function.
      * This predicts the state vector with:
@@ -148,8 +153,9 @@ extern "C"
      *  [1] Grewal, Weill, Andrews. "Global positioning systems, inertial
      *      navigation, and integration". 1st ed. John Wiley & Sons, New York, 2001.
      */
-    void kalman_udu_predict(float* x, float* U, float* d, const float* Phi,
-                            const float* G, const float* Q, int n, int r);
+    int kalman_udu_predict(float* restrict x, float* restrict U, float* restrict d,
+                           const float* restrict Phi, const float* restrict G,
+                           const float* restrict Q, int n, int r);
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,10 @@
  * @author Jan Zwiener (jan@zwiener.org)
  *
  * @brief UDU Kalman Filter
+ *
+ * Constraints
+ *  - All pointer arguments shall not overlap.
+ *  - R in kalman_udu() must be diagonal (call decorrelate() if needed)
  * @{ */
 
 /******************************************************************************
@@ -29,6 +33,14 @@
 #define KALMAN_MAX_STATE_SIZE 32 /* kalman filter scratchpad buf size */
 #endif
 
+#ifndef KALMAN_MAX_NOISE_SIZE
+/* max. columns r of noise matrix G (n x r). */
+#define KALMAN_MAX_NOISE_SIZE KALMAN_MAX_STATE_SIZE
+#endif
+
+/* Limit for division (alpha, d[i], s). */
+#define KALMAN_UDU_EPS (1e-30f)
+
 /******************************************************************************
  * TYPEDEFS
  ******************************************************************************/
@@ -45,15 +57,20 @@
  * FUNCTION BODIES
  ******************************************************************************/
 
-int kalman_udu_scalar(float* x, float* U, float* d, const float dz, const float R,
-                      const float* H_line, int n)
+int kalman_udu_scalar(float* restrict x, float* restrict U, float* restrict d,
+                      const float dz, const float R,
+                      const float* restrict H_line, int n)
 {
-    assert(n <= KALMAN_MAX_STATE_SIZE);
+    assert(n > 0 && n <= KALMAN_MAX_STATE_SIZE);
+    assert((const float*)U != H_line && x != H_line && d != H_line);
 
     float a[KALMAN_MAX_STATE_SIZE];
     float b[KALMAN_MAX_STATE_SIZE];
-    float alpha = R;
-    float gamma = 1.0f / alpha;
+
+    if (!(R > 0.0f)) /* also capture NaN */
+    {
+        return -1;
+    }
 
     {
         // calculate: a = U'*H'
@@ -68,43 +85,65 @@ int kalman_udu_scalar(float* x, float* U, float* d, const float dz, const float 
         b[j] = d[j] * a[j]; // b = D*a = diag(d)*a
     }
 
-    for (int j = 0; j < n; j++)
+    /* Health check */
     {
-        float beta = alpha;
-        alpha += a[j] * b[j];
-        float lambda = -a[j] * gamma;
-
-        gamma = 1.0f / alpha; // FIXME add test to check for UDU filter health
-
-        d[j] *= beta * gamma;
-        for (int i = 0; i < j; i++)
+        float alpha_chk = R;
+        for (int j = 0; j < n; j++)
         {
-            beta                    = MAT_ELEM(U, i, j, n, n);
-            MAT_ELEM(U, i, j, n, n) = beta + b[i] * lambda;
-            b[i] += b[j] * beta;
+            alpha_chk += a[j] * b[j];
+            if (!(alpha_chk > KALMAN_UDU_EPS))
+            {
+                return -1; /* U-D update not possible */
+            }
         }
     }
 
+    float alpha = R;
+    float gamma = 1.0f / alpha;
+
     for (int j = 0; j < n; j++)
     {
-        x[j] += gamma * dz * b[j];
+        const float beta_j = alpha;
+        alpha += a[j] * b[j];
+        const float lambda = -a[j] * gamma;
+
+        gamma = 1.0f / alpha; /* alpha > 0 due to health check */
+
+        d[j] *= beta_j * gamma;
+
+        const float bj = b[j];
+        for (int i = 0; i < j; i++)
+        {
+            const float uij = MAT_ELEM(U, i, j, n, n);
+
+            MAT_ELEM(U, i, j, n, n) = uij + b[i] * lambda;
+            b[i] += bj * uij;
+        }
+    }
+
+    const float k = gamma * dz;
+    for (int j = 0; j < n; j++)
+    {
+        x[j] += k * b[j];
     }
 
     return 0;
 }
 
-int kalman_udu(float* x, float* U, float* d, const float* z, const float* R, const float* Ht,
-               int n, int m, float chi2_threshold, int downweight_outlier)
+int kalman_udu(float* restrict x, float* restrict U, float* restrict d,
+               const float* restrict z, const float* restrict R,
+               const float* restrict Ht, int n, int m,
+               float chi2_threshold, int downweight_outlier)
 {
-    assert(n <= KALMAN_MAX_STATE_SIZE);
+    assert(n > 0 && n <= KALMAN_MAX_STATE_SIZE);
 
     int retcode = 0;
 
     for (int i = 0; i < m; i++, Ht += n) /* iterate over each measurement,
                                             goto next line of H after each iteration */
     {
-        float Rv = MAT_ELEM(R, i, i, m, m); /// get scalar measurement variance
-        float dz = z[i];                    // calculate residual for current scalar measurement
+        float Rv = MAT_ELEM(R, i, i, m, m); /* get scalar measurement variance */
+        float dz = z[i];                    /* calculate residual for current scalar measurement */
         matmul("N", "N", 1, 1, n, -1.0f, Ht, x, 1.0f, &dz); // dz = z - H(i,:)*x
 
         // <robust>
@@ -124,14 +163,20 @@ int kalman_udu(float* x, float* U, float* d, const float* z, const float* R, con
             }
             s = HPHT + Rv;
 
+            if (!(s > KALMAN_UDU_EPS)) /* is innovation broken? */
+            {
+                retcode = -1;
+                continue; /* skip measurement */
+            }
+
             const float mahalanobis_dist_sq = dz * dz / s;
             if (mahalanobis_dist_sq > chi2_threshold) // potential outlier?
             {
                 if (!downweight_outlier)
                 {
-                    continue; // just skip this measurement
+                    continue; /* skip measurement */
                 }
-                // process this measurement, but reduce the measurement precision
+                /* process this measurement, but reduce the measurement precision */
                 const float f = mahalanobis_dist_sq / chi2_threshold;
                 Rv            = (f - 1.0f) * HPHT + f * Rv;
             }
@@ -141,13 +186,14 @@ int kalman_udu(float* x, float* U, float* d, const float* z, const float* R, con
         int status = kalman_udu_scalar(x, U, d, dz, Rv, Ht, n);
         if (status != 0)
         {
-            retcode = -1; // still process rest of the measurement vector
+            retcode = -1; /* still process rest of the measurement vector */
         }
     }
     return retcode;
 }
 
-int decorrelate(float* z, float* Ht, float* R, int n, int m)
+int decorrelate(float* restrict z, float* restrict Ht, float* restrict R,
+                int n, int m)
 {
     /* Basic decorrelation in MATLAB
     [G] = chol(R); % G'*G = R
@@ -170,36 +216,42 @@ int decorrelate(float* z, float* Ht, float* R, int n, int m)
     return 0;
 }
 
-void kalman_udu_predict(float* x, float* U, float* d, const float* Phi,
-                        const float* G, const float* Q, int n, int r)
+int kalman_udu_predict(float* restrict x, float* restrict U, float* restrict d,
+                       const float* restrict Phi, const float* restrict G,
+                       const float* restrict Q, int n, int r)
 {
-    assert(n <= KALMAN_MAX_STATE_SIZE);
-    assert(r <= KALMAN_MAX_STATE_SIZE);
+    assert(n > 0 && n <= KALMAN_MAX_STATE_SIZE);
+    assert(r >= 0 && r <= KALMAN_MAX_NOISE_SIZE);
+    /* restrict-contract: check for some aliasing violations */
+    assert(Phi != (const float*)U && G != (const float*)U);
+    assert(Q != (const float*)d);
+
+    int retcode = 0;
 
     if (x) //  if prediction of state vector is requested: x = Phi*x;
     {
         float tmp[KALMAN_MAX_STATE_SIZE];
-        memcpy(tmp, x, sizeof(x[0])*(size_t)n);
+        memcpy(tmp, x, sizeof(x[0]) * (size_t)n);
         matmul("N", "N", n, 1, n, 1.0f, Phi, tmp, 0.0f, x);
     }
 
     // G_tmp = G; // move to internal array for destructive updates
-    float G_tmp[KALMAN_MAX_STATE_SIZE*KALMAN_MAX_STATE_SIZE];
-    memcpy(G_tmp, G, sizeof(G_tmp[0])*(size_t)n*(size_t)r);
+    float G_tmp[KALMAN_MAX_STATE_SIZE * KALMAN_MAX_NOISE_SIZE];
+    memcpy(G_tmp, G, sizeof(G_tmp[0]) * (size_t)n * (size_t)r);
 
     // PhiU  = Phi*U; // rows of [PhiU,G] are to be orthogonalized
-    float PhiU[KALMAN_MAX_STATE_SIZE*KALMAN_MAX_STATE_SIZE];
+    float PhiU[KALMAN_MAX_STATE_SIZE * KALMAN_MAX_STATE_SIZE];
     float tmpalpha = 1.0f;
-    memcpy(PhiU, Phi, sizeof(Phi[0])*(size_t)n*(size_t)n);
+    memcpy(PhiU, Phi, sizeof(Phi[0]) * (size_t)n * (size_t)n);
     strmm_("R", "U", "N", "U", &n, &n, &tmpalpha, U, &n, PhiU, &n);
 
     mateye(U, n); // U = eye(n)
 
     // save origin input d vector
     float din[KALMAN_MAX_STATE_SIZE];
-    memcpy(din, d, sizeof(d[0])*(size_t)n); // din = d
+    memcpy(din, d, sizeof(d[0]) * (size_t)n); // din = d
 
-    for (int i = n-1; i >= 0; i--)
+    for (int i = n - 1; i >= 0; i--)
     {
         // d[i] is the weighted norm of row i of [PhiU, G]: BOTH sums must
         // run over the full column count of their matrix (n for PhiU, r
@@ -210,42 +262,61 @@ void kalman_udu_predict(float* x, float* U, float* d, const float* Phi,
         // inflating the covariance of the leading states a little more
         // with every call (see the "r > n" regression test).
         float sigma = 0.0f;
-        for (int j=0;j<n;j++)
+        for (int j = 0; j < n; j++)
         {
             sigma += MAT_ELEM(PhiU, i, j, n, n) *
                      MAT_ELEM(PhiU, i, j, n, n) * din[j];
         }
-        for (int j=0;j<r;j++)
+        for (int j = 0; j < r; j++)
         {
             sigma += MAT_ELEM(G_tmp, i, j, n, r) *
                      MAT_ELEM(G_tmp, i, j, n, r) * Q[j];
         }
         d[i] = sigma;
-        for (int j=0;j<i;j++)
+
+        if (!(d[i] > KALMAN_UDU_EPS))
+        {
+            d[i] = 0.0f;
+            for (int j = 0; j < i; j++)
+            {
+                MAT_ELEM(U, j, i, n, n) = 0.0f;
+            }
+            retcode = -1; /* P is singular */
+            continue;
+        }
+
+        const float dinv = 1.0f / d[i];
+
+        for (int j = 0; j < i; j++)
         {
             sigma = 0.0f;
-            for (int k=0;k<n;k++)
+            for (int k = 0; k < n; k++)
             {
                 sigma += MAT_ELEM(PhiU, i, k, n, n) * din[k] *
                          MAT_ELEM(PhiU, j, k, n, n);
             }
-            for (int k=0;k<r;k++)
+            for (int k = 0; k < r; k++)
             {
                 sigma += MAT_ELEM(G_tmp, i, k, n, r) *
                          Q[k] *
                          MAT_ELEM(G_tmp, j, k, n, r);
             }
-            MAT_ELEM(U, j, i, n, n) = sigma / d[i];
-            for (int k=0;k<n;k++)
+
+            const float uji = sigma * dinv;
+            MAT_ELEM(U, j, i, n, n) = uji;
+
+            for (int k = 0; k < n; k++)
             {
-                MAT_ELEM(PhiU, j, k, n, n) -= MAT_ELEM(U, j, i, n, n)*MAT_ELEM(PhiU, i, k, n, n);
+                MAT_ELEM(PhiU, j, k, n, n) -= uji * MAT_ELEM(PhiU, i, k, n, n);
             }
-            for (int k=0;k<r;k++)
+            for (int k = 0; k < r; k++)
             {
-                MAT_ELEM(G_tmp, j, k, n, r) -= MAT_ELEM(U, j, i, n, n)*MAT_ELEM(G_tmp, i, k, n, r);
+                MAT_ELEM(G_tmp, j, k, n, r) -= uji * MAT_ELEM(G_tmp, i, k, n, r);
             }
         }
     }
+
+    return retcode;
 }
 
 /* @} */
