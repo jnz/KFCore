@@ -144,7 +144,9 @@ int kalman_udu(float* restrict x, float* restrict U, float* restrict d,
     {
         float Rv = MAT_ELEM(R, i, i, m, m); /* get scalar measurement variance */
         float dz = z[i];                    /* calculate residual for current scalar measurement */
-        matmul("N", "N", 1, 1, n, -1.0f, Ht, x, 1.0f, &dz); // dz = z - H(i,:)*x
+        // matmul("N", "N", 1, 1, n, -1.0f, Ht, x, 1.0f, &dz); // dz = z - H(i,:)*x
+        // inline for-loop dot product to avoid matmul call
+        for (int j = 0; j < n; j++) { dz -= Ht[j] * x[j]; }
 
         // <robust>
         if (chi2_threshold > 0.0f)
@@ -156,7 +158,16 @@ int kalman_udu(float* restrict x, float* restrict U, float* restrict d,
                      // Journal of Geodesy, 88(4), 391-401.
 
             float HPHT = 0.0f; // calc. scalar result of H_line*U*diag(d)*U'*H_line'
-            matmul("N", "N", 1, n, n, 1.0f, Ht, U, 0.0f, tmp); // tmp = H(i,:) * U
+            // matmul("N", "N", 1, n, n, 1.0f, Ht, U, 0.0f, tmp);
+            // tmp = H(i,:) * U
+            // nxn product (at this size) is cheaper as a direct loop
+            // with column-major than a SGEMM call.
+            for (int k = 0; k < n; k++)
+            {
+                float acc = 0.0f;
+                for (int j = 0; j < n; j++) { acc += Ht[j] * MAT_ELEM(U, j, k, n, n); }
+                tmp[k] = acc;
+            }
             for (int j = 0; j < n; j++)
             {
                 HPHT += tmp[j] * tmp[j] * d[j];
@@ -255,12 +266,7 @@ int kalman_udu_predict(float* restrict x, float* restrict U, float* restrict d,
     {
         // d[i] is the weighted norm of row i of [PhiU, G]: BOTH sums must
         // run over the full column count of their matrix (n for PhiU, r
-        // for G). The G sum used to be folded into the n-loop with an
-        // "if (j < r)" guard, silently dropping noise columns n..r-1
-        // whenever r > n. The U(j,i) numerator below still sums all r
-        // columns. The mismatched numerator/denominator corrupted U,
-        // inflating the covariance of the leading states a little more
-        // with every call (see the "r > n" regression test).
+        // for G).
         float sigma = 0.0f;
         for (int j = 0; j < n; j++)
         {
