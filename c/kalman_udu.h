@@ -165,6 +165,30 @@ extern "C"
                            const float* KFC_RESTRICT Phi, const float* KFC_RESTRICT G,
                            const float* KFC_RESTRICT Q, int n, int r);
 
+    /** @brief Rank-one update of a UDU' factorization (Agee-Turner).
+     *
+     *  Updates U and d in place so that afterwards
+     *
+     *      U*diag(d)*U' = U0*diag(d0)*U0' + c*a*a'
+     *
+     *  without forming the covariance matrix. O(n^2) operations and O(1)
+     *  extra memory, e.g. to add process noise to single states, a = e_k.
+     *
+     *  @param[in,out] U   unit upper triangular factor (n x n, column-major)
+     *  @param[in,out] d   diagonal factor (n x 1)
+     *  @param[in,out] a   update vector (n x 1), overwritten
+     *  @param[in] c       scale of the update, c >= 0
+     *  @param[in] n       State vector size n.
+     *
+     * @return 0 on success, -1 on error (c < 0 or not finite).
+     *
+     * References:
+     *  [1] Bierman, G. J. "Factorization Methods for Discrete Sequential
+     *      Estimation". Academic Press, New York, 1977.
+     */
+    int kalman_udu_rank1_update(float* KFC_RESTRICT U, float* KFC_RESTRICT d,
+                                float* KFC_RESTRICT a, float c, int n);
+
 #ifdef __cplusplus
 }
 #endif

@@ -548,6 +548,88 @@ static void testnavtoolbox(void)
         }
         printf("[x] UDU Kalman Filter Prediction Test\n");
     }
+    // UDU rank-one update (Agee-Turner): U*diag(d)*U' after the update must
+    // be P + c*a*a', for a general vector and for a unit vector (process
+    // noise on a single state), against the explicit sum.
+    {
+        const int n    = 4;
+        const float P[] = { 4.0f,  1.0f,  0.5f, -0.2f,
+                            1.0f,  3.0f,  0.4f,  0.3f,
+                            0.5f,  0.4f,  2.0f,  0.1f,
+                           -0.2f,  0.3f,  0.1f,  1.5f };
+        const float a_general[] = { 0.7f, -1.2f, 0.4f, 2.0f };
+        const float a_unit[]    = { 0.0f, 0.0f, 1.0f, 0.0f };
+        const float* const avec[] = { a_general, a_unit };
+        const float cvec[]        = { 0.8f, 6.25f };
+
+        for (int t = 0; t < 2; t++)
+        {
+            float U[4 * 4];
+            float d[4];
+            float a[4];
+            float Pexp[4 * 4];
+            float Pnew[4 * 4];
+            int   result = udu(P, U, d, n);
+            assert(result == 0);
+            memcpy(a, avec[t], sizeof(a));
+            result = kalman_udu_rank1_update(U, d, a, cvec[t], n);
+            assert(result == 0);
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    Pexp[i + j * n] = P[i + j * n] + cvec[t] * avec[t][i] * avec[t][j];
+                    float sum       = 0.0f;
+                    for (int k = (i > j ? i : j); k < n; k++)
+                    {
+                        sum += U[i + k * n] * U[j + k * n] * d[k];
+                    }
+                    Pnew[i + j * n] = sum;
+                }
+            }
+            for (int i = 0; i < n; i++)
+            {
+                TEST_FLOAT_WITHIN(1.0e-5f, U[i + i * n], 1.0f,
+                                  "kalman_udu_rank1_update U lost its unit diagonal");
+                for (int j = 0; j < i; j++)
+                {
+                    TEST_FLOAT_WITHIN(0.0f, U[i + j * n], 0.0f,
+                                      "kalman_udu_rank1_update U not upper triangular");
+                }
+            }
+            for (int i = 0; i < n * n; i++)
+            {
+                TEST_FLOAT_WITHIN(1.0e-5f, Pnew[i], Pexp[i],
+                                  "kalman_udu_rank1_update P + c*a*a' mismatch");
+            }
+        }
+        // c = 0 leaves the factors unchanged, c < 0 is refused
+        {
+            float U[4 * 4];
+            float d[4];
+            float U0[4 * 4];
+            float d0[4];
+            float a[4];
+            int   result = udu(P, U, d, n);
+            assert(result == 0);
+            memcpy(U0, U, sizeof(U));
+            memcpy(d0, d, sizeof(d));
+            memcpy(a, a_general, sizeof(a));
+            result = kalman_udu_rank1_update(U, d, a, 0.0f, n);
+            assert(result == 0);
+            for (int i = 0; i < n * n; i++)
+            {
+                TEST_FLOAT_WITHIN(0.0f, U[i], U0[i], "kalman_udu_rank1_update c = 0 changed U");
+            }
+            for (int i = 0; i < n; i++)
+            {
+                TEST_FLOAT_WITHIN(0.0f, d[i], d0[i], "kalman_udu_rank1_update c = 0 changed d");
+            }
+            result = kalman_udu_rank1_update(U, d, a, -1.0f, n);
+            assert(result == -1);
+        }
+        printf("[x] UDU rank-one update (kalman_udu_rank1_update)\n");
+    }
     // UDU vs. conventional prediction with more noise inputs than states
     // (r > n). Regression test: the Thornton implementation used to drop
     // the G/Q noise columns n..r-1 from the diagonal d[i] computation,

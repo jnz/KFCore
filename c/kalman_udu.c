@@ -326,3 +326,34 @@ int kalman_udu_predict(float* restrict x, float* restrict U, float* restrict d,
 }
 
 /* @} */
+
+int kalman_udu_rank1_update(float* restrict U, float* restrict d, float* restrict a, float c,
+                            int n)
+{
+    assert(n > 0 && n <= KALMAN_MAX_STATE_SIZE);
+    if (!(c >= 0.0f) || !isfinite(c))
+    {
+        return -1;
+    }
+    // Columns from the last to the first: d(j) takes c*a(j)^2, the rest of
+    // the rank-one term moves on to the columns before j.
+    for (int j = n - 1; j > 0 && c > 0.0f; j--)
+    {
+        const float s     = a[j];
+        const float d_new = d[j] + c * s * s;
+        if (!(d_new > 0.0f))
+        {
+            continue;
+        }
+        const float beta = c * s / d_new;
+        c                = c * d[j] / d_new;
+        d[j]             = d_new;
+        for (int i = 0; i < j; i++)
+        {
+            a[i] -= s * U[i + j * n];
+            U[i + j * n] += beta * a[i];
+        }
+    }
+    d[0] += c * a[0] * a[0];
+    return 0;
+}
