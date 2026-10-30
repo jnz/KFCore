@@ -52,6 +52,7 @@
  * @param[out] H Output Hilbert matrix (n x n).
  * @param[in] n Dimension of H. */
 static void hilbert(float* H, int n);
+static void testqr(void);
 
 /** @brief Print a matrix to stdout
  * @param[in] R column-major n x m matrix
@@ -1441,6 +1442,84 @@ static void teststrmm(void)
     }
 }
 
+static void testqr(void)
+{
+    /* Textbook example (Golub/Van Loan, Trefethen/Bau): A = QR with
+       R = [-14 -21 14; 0 -175 70; 0 0 -35] for the Householder signs. */
+    {
+        float A[9] = { 12, 6, -4, -51, 167, 24, 4, -68, -41 };
+        float tau[3];
+        const float R[9] = { -14, 0, 0, -21, -175, 0, 14, 70, -35 };
+        assert(qr_householder(A, 3, 3, tau) == 0);
+        for (int j = 0; j < 3; j++)
+        {
+            for (int i = 0; i <= j; i++)
+            {
+                TEST_FLOAT_WITHIN(1.0e-3f, MAT_ELEM(R, i, j, 3, 3), MAT_ELEM(A, i, j, 3, 3),
+                                  "qr_householder textbook R");
+            }
+        }
+        printf("[x] qr_householder textbook example\n");
+    }
+
+    /* Tall random matrix: Q' A is R with zeros below the diagonal, Q' is
+       orthogonal, and Q' applied to a vector keeps its norm. */
+    {
+        enum { M = 24, N = 7 };
+        float A[M * N], A0[M * N], tau[N], B[M * N], Qt[M * M], QtQ[M * M];
+        unsigned seed = 12345u;
+        for (int k = 0; k < M * N; k++)
+        {
+            seed = seed * 1103515245u + 12345u;
+            A[k] = (float)((seed >> 8) & 0xFFFF) / 32768.0f - 1.0f;
+        }
+        memcpy(A0, A, sizeof(A));
+        assert(qr_householder(A, M, N, tau) == 0);
+
+        memcpy(B, A0, sizeof(A0));
+        qr_apply_qt(A, M, N, tau, B, N);
+        for (int j = 0; j < N; j++)
+        {
+            for (int i = 0; i < M; i++)
+            {
+                const float expected = (i <= j) ? MAT_ELEM(A, i, j, M, N) : 0.0f;
+                TEST_FLOAT_WITHIN(1.0e-5f, expected, MAT_ELEM(B, i, j, M, N),
+                                  "qr_apply_qt(A) is R");
+            }
+        }
+
+        mateye(Qt, M);
+        qr_apply_qt(A, M, N, tau, Qt, M);
+        matmul("N", "T", M, M, M, 1.0f, Qt, Qt, 0.0f, QtQ);
+        for (int j = 0; j < M; j++)
+        {
+            for (int i = 0; i < M; i++)
+            {
+                TEST_FLOAT_WITHIN(1.0e-5f, (i == j) ? 1.0f : 0.0f, MAT_ELEM(QtQ, i, j, M, M),
+                                  "Q' orthogonal");
+            }
+        }
+        printf("[x] qr_householder tall matrix, Q' A = R, Q' orthogonal\n");
+    }
+
+    /* A zero column gives tau = 0 (no reflection) and no NaN, m < n is
+       refused. */
+    {
+        float A[6] = { 0, 0, 0, 1, 0, 3 };
+        float tau[2];
+        assert(qr_householder(A, 3, 2, tau) == 0);
+        assert(tau[0] == 0.0f);
+        TEST_FLOAT_WITHIN(1.0e-6f, -3.0f, MAT_ELEM(A, 1, 1, 3, 2), "qr second column norm");
+        for (int k = 0; k < 6; k++)
+        {
+            assert(isfinite(A[k]));
+        }
+        float W[6] = { 1, 2, 3, 4, 5, 6 };
+        assert(qr_householder(W, 2, 3, tau) == -1);
+        printf("[x] qr_householder zero column and m < n\n");
+    }
+}
+
 int main(int argc, char** argv)
 {
     testlinalg();
@@ -1450,6 +1529,7 @@ int main(int argc, char** argv)
     testssyrk();
     testssymm();
     teststrmm();
+    testqr();
 
     printf("\n[OK] All tests completed.\n");
 
