@@ -203,3 +203,83 @@ int udu(const float* A, float* U, float* d, const int m)
     }
     return 0;
 }
+
+int qr_householder(float* A, int m, int n, float* tau)
+{
+    /* Source: Golub, Van Loan. "Matrix Computations." 4th ed., 2013,
+     * algorithm 5.2.1, with the reflector scaling of LAPACK ?larfg. */
+    if (n > m)
+    {
+        return -1;
+    }
+    for (int j = 0; j < n; j++)
+    {
+        float* col   = &A[j * m];
+        float  xnorm = 0.0f;
+        for (int i = j + 1; i < m; i++)
+        {
+            xnorm += col[i] * col[i];
+        }
+        xnorm = SQRTF(xnorm);
+        if (xnorm <= 0.0f)
+        {
+            tau[j] = 0.0f; /* already upper triangular in this column */
+            continue;
+        }
+        const float alpha = col[j];
+        const float beta  = -copysignf(hypotf(alpha, xnorm), alpha);
+        const float scale = 1.0f / (alpha - beta);
+        tau[j]            = (beta - alpha) / beta;
+        for (int i = j + 1; i < m; i++)
+        {
+            col[i] *= scale;
+        }
+        col[j] = beta;
+
+        /* apply H_j to the remaining columns */
+        for (int c = j + 1; c < n; c++)
+        {
+            float* b = &A[c * m];
+            float  w = b[j];
+            for (int i = j + 1; i < m; i++)
+            {
+                w += col[i] * b[i];
+            }
+            w *= tau[j];
+            b[j] -= w;
+            for (int i = j + 1; i < m; i++)
+            {
+                b[i] -= w * col[i];
+            }
+        }
+    }
+    return 0;
+}
+
+void qr_apply_qt(const float* QR, int m, int n, const float* tau, float* B, int k)
+{
+    /* Q' = H_(n-1) ... H_1 H_0, so H_0 goes first */
+    for (int j = 0; j < n; j++)
+    {
+        if (tau[j] <= 0.0f)
+        {
+            continue; /* no reflection, tau is in [1, 2] otherwise */
+        }
+        const float* v = &QR[j * m];
+        for (int c = 0; c < k; c++)
+        {
+            float* b = &B[c * m];
+            float  w = b[j];
+            for (int i = j + 1; i < m; i++)
+            {
+                w += v[i] * b[i];
+            }
+            w *= tau[j];
+            b[j] -= w;
+            for (int i = j + 1; i < m; i++)
+            {
+                b[i] -= w * v[i];
+            }
+        }
+    }
+}

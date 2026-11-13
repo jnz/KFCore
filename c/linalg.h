@@ -141,6 +141,34 @@ extern "C"
      */
     int udu(const float* A, float* U, float* d, const int n);
 
+    /** @brief Householder QR decomposition A = Q R, in place.
+     * LAPACK: ?geqr2
+     *
+     * Column j of Q is reflected by H_j = I - tau[j] v v' with v(j) = 1 and
+     * v below the diagonal stored in A, Q = H_0 H_1 ... H_(n-1).
+     *
+     * @param[in/out] A Input matrix (m x n), on return R in the upper
+     *                triangle and the reflectors below the diagonal
+     * @param[in] m Rows of A
+     * @param[in] n Columns of A, n <= m
+     * @param[out] tau Scale of each reflector (n), 0 where a column needs
+     *                 no reflection
+     * @return 0 on success, -1 if n > m
+     */
+    int qr_householder(float* A, int m, int n, float* tau);
+
+    /** @brief B = Q' B with the reflectors of qr_householder.
+     * LAPACK: ?orm2r (side L, trans T)
+     *
+     * @param[in] QR Output of qr_householder (m x n)
+     * @param[in] m Rows of QR and B
+     * @param[in] n Columns of QR (number of reflectors)
+     * @param[in] tau Reflector scales of qr_householder (n)
+     * @param[in/out] B Matrix (m x k), overwritten by Q' B
+     * @param[in] k Columns of B
+     */
+    void qr_apply_qt(const float* QR, int m, int n, const float* tau, float* B, int k);
+
 #ifdef __cplusplus
 }
 #endif
